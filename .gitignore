@@ -1,0 +1,11 @@
+target/
+out/
+*.log
+.idea/
+.vscode/
+.env
+data/
+logs/
+certs/
+unpackage/
+node_modules/
