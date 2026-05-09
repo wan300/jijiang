@@ -18,7 +18,7 @@
     </view>
 
     <button class="primary-btn submit" :disabled="!agreed || loading" :loading="loading" @click="submit">
-      提交订单并模拟支付
+      提交订单并支付
     </button>
   </view>
 </template>
@@ -27,7 +27,7 @@
 import { ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { createOrder } from "@/api/order";
-import { mockPay } from "@/api/payment";
+import { payOrder } from "@/api/payment";
 import { getServiceDetail } from "@/api/service";
 import { useOrderStore } from "@/store/order";
 import { money } from "@/utils/money";
@@ -53,9 +53,11 @@ async function submit() {
   try {
     const order = await createOrder({ serviceId: serviceId.value, remark: remark.value });
     orderStore.setLastOrder(order.orderId);
-    await mockPay(order.orderId);
-    toast("模拟支付成功", "success");
-    uni.redirectTo({ url: `/pages/order/pay-result?orderId=${order.orderId}` });
+    const cashier = await payOrder(order.orderId);
+    toast("支付单已生成", "success");
+    uni.redirectTo({
+      url: `/pages/order/pay-result?orderId=${order.orderId}&payUrl=${encodeURIComponent(cashier.payUrl)}&qrCodeUrl=${encodeURIComponent(cashier.qrCodeUrl || "")}`,
+    });
   } finally {
     loading.value = false;
   }

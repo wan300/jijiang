@@ -37,6 +37,7 @@ services:
     depends_on:
       - mysql
       - redis
+      - payment-server
     environment:
       SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:mysql://mysql:3306/jijiang?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
@@ -45,8 +46,42 @@ services:
       REDIS_HOST: redis
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?ADMIN_USERNAME is required for prod backend}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required for prod backend}
+      ADMIN_DISPLAY_NAME: ${ADMIN_DISPLAY_NAME:-JiJiang Admin}
+      PAYMENT_SERVER_BASE_URL: http://payment-server:6670
+      PAYMENT_SERVER_CLIENT_ID: ${PAYMENT_SERVER_CLIENT_ID:-jijiang-app}
+      PAYMENT_SERVER_SHARED_SECRET: ${PAYMENT_SERVER_SHARED_SECRET:-dev-payment-secret-change-me}
     ports:
       - "8080:8080"
+
+  payment-server:
+    build:
+      context: ./jijiang-payment-server
+    container_name: jijiang-payment-server
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      PAYMENT_DB_URL: jdbc:mysql://mysql:3306/jijiang?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      PAYMENT_DB_USERNAME: ${DB_USERNAME:-jijiang}
+      PAYMENT_DB_PASSWORD: ${DB_PASSWORD:-jijiang}
+      PAYMENT_SERVER_PORT: 6670
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis}
+      XUNHU_APP_ID: ${XUNHU_APP_ID:-}
+      XUNHU_APP_SECRET: ${XUNHU_APP_SECRET:-}
+      XUNHU_GATEWAY: ${XUNHU_GATEWAY:-https://api.xunhupay.com/payment/do.html}
+      XUNHU_NOTIFY_URL: ${XUNHU_NOTIFY_URL:-}
+      XUNHU_RETURN_URL: ${XUNHU_RETURN_URL:-}
+      XUNHU_CALLBACK_URL: ${XUNHU_CALLBACK_URL:-}
+      APP_SERVER_CALLBACK_URL: http://backend:8080/internal/payment/callback
+      APP_SERVER_CLIENT_ID: ${APP_SERVER_CLIENT_ID:-jijiang-app}
+      APP_SERVER_SHARED_SECRET: ${APP_SERVER_SHARED_SECRET:-dev-payment-secret-change-me}
+    ports:
+      - "6670:6670"
 
   frontend:
     build:
@@ -59,3 +94,15 @@ services:
       - backend
     ports:
       - "80:80"
+
+  admin:
+    build:
+      context: ./jijiang-backend/jijiang-admin
+      args:
+        VITE_API_BASE: ${ADMIN_VITE_API_BASE:-}
+    container_name: jijiang-admin
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8088:80"

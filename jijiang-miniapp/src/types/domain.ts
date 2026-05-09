@@ -80,9 +80,12 @@ export interface VerifyResult {
   message: string;
 }
 
-export interface MockPayResult {
+export interface PaymentCreateResult {
+  channel: "XUNHUPAY";
   orderId: number;
-  status: number;
-  transactionId: string;
-  payChannel: string;
+  orderNo: string;
+  tradeOrderId: string;
+  payUrl: string;
+  qrCodeUrl?: string;
+  expireSeconds: number;
 }

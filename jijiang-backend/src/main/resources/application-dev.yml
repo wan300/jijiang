@@ -11,3 +11,9 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+
+jijiang:
+  payment-server:
+    base-url: ${PAYMENT_SERVER_BASE_URL:http://localhost:6670}
+    client-id: ${PAYMENT_SERVER_CLIENT_ID:jijiang-app}
+    shared-secret: ${PAYMENT_SERVER_SHARED_SECRET:dev-payment-secret-change-me}

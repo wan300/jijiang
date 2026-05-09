@@ -1,0 +1,33 @@
+server:
+  port: ${PAYMENT_SERVER_PORT:6670}
+
+spring:
+  application:
+    name: jijiang-payment-server
+  profiles:
+    active: dev
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    table: flyway_schema_history_payment
+  jackson:
+    default-property-inclusion: non_null
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+jijiang:
+  xunhupay:
+    app-id: ${XUNHU_APP_ID:}
+    app-secret: ${XUNHU_APP_SECRET:}
+    gateway: ${XUNHU_GATEWAY:https://api.xunhupay.com/payment/do.html}
+    notify-url: ${XUNHU_NOTIFY_URL:}
+    return-url: ${XUNHU_RETURN_URL:}
+    callback-url: ${XUNHU_CALLBACK_URL:}
+  app-server:
+    callback-url: ${APP_SERVER_CALLBACK_URL:}
+    client-id: ${APP_SERVER_CLIENT_ID:jijiang-app}
+    shared-secret: ${APP_SERVER_SHARED_SECRET:}

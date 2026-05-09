@@ -1,0 +1,113 @@
+package com.jijiang.payment.infra;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jijiang.payment.common.BusinessException;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
+
+import java.math.RoundingMode;
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+@Component
+class HttpXunhuPayClient implements XunhuPayClient {
+    private static final String NONCE_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+    private final XunhuPayProperties properties;
+    private final ObjectMapper objectMapper;
+    private final RestClient restClient;
+    private final SecureRandom random = new SecureRandom();
+
+    HttpXunhuPayClient(XunhuPayProperties properties, ObjectMapper objectMapper) {
+        this.properties = properties;
+        this.objectMapper = objectMapper;
+        this.restClient = RestClient.create();
+    }
+
+    @Override
+    public CreateOrderResponse createOrder(CreateOrderRequest request) {
+        if (!properties.configured()) {
+            throw new BusinessException(30020, "虎皮椒支付未配置");
+        }
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("version", "1.1");
+        params.put("appid", properties.getAppId());
+        params.put("trade_order_id", request.tradeOrderId());
+        params.put("total_fee", request.amount().setScale(2, RoundingMode.HALF_UP));
+        params.put("title", request.title());
+        params.put("time", String.valueOf(Instant.now().getEpochSecond()));
+        params.put("notify_url", request.notifyUrl());
+        putIfText(params, "return_url", request.returnUrl());
+        putIfText(params, "callback_url", request.callbackUrl());
+        putIfText(params, "attach", request.attach());
+        params.put("plugins", "jijiang-payment-server");
+        params.put("nonce_str", nonce(16));
+
+        Map<String, Object> signedParams = XunhuPaySigner.withHash(params, properties.getAppSecret());
+        try {
+            String response = restClient.post()
+                    .uri(properties.getGateway())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(objectMapper.writeValueAsString(signedParams))
+                    .retrieve()
+                    .body(String.class);
+            JsonNode root = objectMapper.readTree(response == null ? "{}" : response);
+            if (root.hasNonNull("hash")) {
+                Map<String, Object> responseMap = objectMapper.convertValue(root, Map.class);
+                if (!XunhuPaySigner.verify(responseMap, properties.getAppSecret())) {
+                    throw new BusinessException(30021, "虎皮椒响应验签失败");
+                }
+            }
+            int errcode = root.path("errcode").asInt(-1);
+            if (errcode != 0) {
+                throw new BusinessException(30022, "虎皮椒下单失败：" + root.path("errmsg").asText("unknown"));
+            }
+            String url = text(root, "url");
+            String qrCodeUrl = text(root, "url_qrcode");
+            String payUrl = firstText(url, qrCodeUrl);
+            if (payUrl == null) {
+                throw new BusinessException(30022, "虎皮椒未返回付款地址");
+            }
+            return new CreateOrderResponse(request.tradeOrderId(), payUrl, qrCodeUrl, response);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(30022, "虎皮椒下单失败");
+        }
+    }
+
+    private void putIfText(Map<String, Object> params, String key, String value) {
+        if (value != null && !value.isBlank()) {
+            params.put(key, value);
+        }
+    }
+
+    private String nonce(int length) {
+        StringBuilder builder = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            builder.append(NONCE_CHARS.charAt(random.nextInt(NONCE_CHARS.length())));
+        }
+        return builder.toString();
+    }
+
+    private String text(JsonNode root, String key) {
+        JsonNode node = root.get(key);
+        if (node == null || node.isNull() || node.asText().isBlank()) {
+            return null;
+        }
+        return node.asText();
+    }
+
+    private String firstText(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+}

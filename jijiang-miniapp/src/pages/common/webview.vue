@@ -1,5 +1,6 @@
 <template>
-  <view class="page-shell">
+  <web-view v-if="url" :src="url" />
+  <view v-else class="page-shell">
     <view class="surface-card doc">
       <text class="title">{{ title }}</text>
       <text class="p">欢迎使用技匠。平台提供实名认证、担保交易、站内沟通、评价信誉与争议处理能力。</text>
@@ -13,8 +14,11 @@ import { ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 
 const title = ref("技匠服务协议");
+const url = ref("");
+
 onLoad((query) => {
-  if (query?.title) title.value = String(query.title);
+  if (query?.title) title.value = decodeURIComponent(String(query.title));
+  if (query?.url) url.value = decodeURIComponent(String(query.url));
 });
 </script>
 

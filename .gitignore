@@ -1,11 +1,37 @@
+# Java / Maven
 target/
 out/
-*.log
-.idea/
-.vscode/
-.env
+*.class
+*.jar
+*.war
+*.ear
+*.original
+dependency-reduced-pom.xml
+
+# Runtime extracts / local generated files
+.run/
 data/
 logs/
 certs/
-unpackage/
+*.log
+
+# Node / frontend
 node_modules/
+dist/
+build/
+unpackage/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+release/
+.playwright-mcp/

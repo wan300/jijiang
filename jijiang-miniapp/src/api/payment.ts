@@ -1,9 +1,9 @@
 import { request } from "@/api/request";
-import type { MockPayResult } from "@/types/domain";
+import type { PaymentCreateResult } from "@/types/domain";
 
-export function mockPay(orderId: number) {
-  return request<MockPayResult>({
-    url: "/api/payment/mock-pay",
+export function payOrder(orderId: number) {
+  return request<PaymentCreateResult>({
+    url: "/api/payment/create",
     method: "POST",
     data: { orderId },
   });

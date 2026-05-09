@@ -1,6 +1,7 @@
 {
   "extends": "./tsconfig.vue-compat.json",
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
     "sourceMap": true,
     "baseUrl": ".",
     "paths": {

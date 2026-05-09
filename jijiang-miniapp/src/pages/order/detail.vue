@@ -16,6 +16,7 @@
 
     <view v-if="order" class="surface-card card">
       <view class="section-title compact"><text>下一步</text></view>
+      <button v-if="isBuyer && order.status === 10" class="primary-btn" :loading="paying" @click="continuePay">继续支付</button>
       <button v-if="isBuyer && order.status === 40" class="primary-btn" @click="confirm">确认完成</button>
       <button v-if="isBuyer && order.status === 50" class="primary-btn" @click="review">评价订单</button>
       <button v-if="isSeller && order.status === 20" class="primary-btn" @click="accept">接单</button>
@@ -35,6 +36,7 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import JiStatusPill from "@/components/ji-status-pill.vue";
 import { acceptOrder, confirmOrder, deliverOrder, getOrderDetail } from "@/api/order";
+import { payOrder } from "@/api/payment";
 import { useUserStore } from "@/store/user";
 import type { OrderItem } from "@/types/domain";
 import { money } from "@/utils/money";
@@ -45,6 +47,7 @@ const user = useUserStore();
 const orderId = ref(0);
 const order = ref<OrderItem | null>(null);
 const deliverText = ref("");
+const paying = ref(false);
 const isBuyer = computed(() => user.userInfo?.id === order.value?.buyerId);
 const isSeller = computed(() => user.userInfo?.id === order.value?.sellerId);
 
@@ -73,6 +76,19 @@ async function confirm() {
   await confirmOrder(orderId.value);
   toast("订单已完成", "success");
   await load();
+}
+
+async function continuePay() {
+  if (!orderId.value || paying.value) return;
+  paying.value = true;
+  try {
+    const cashier = await payOrder(orderId.value);
+    uni.redirectTo({
+      url: `/pages/order/pay-result?orderId=${orderId.value}&payUrl=${encodeURIComponent(cashier.payUrl)}&qrCodeUrl=${encodeURIComponent(cashier.qrCodeUrl || "")}`,
+    });
+  } finally {
+    paying.value = false;
+  }
 }
 
 function chat() {

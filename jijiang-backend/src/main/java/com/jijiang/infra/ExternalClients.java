@@ -14,10 +14,6 @@ public interface ExternalClients {
         OcrResult recognize(String imageUrl, String realName, String studentNo);
     }
 
-    interface PaymentClient {
-        MockPayParams createPay(Long orderId, String orderNo, BigDecimal amount);
-    }
-
     interface ContentSafetyClient {
         void checkText(String text);
     }
@@ -28,8 +24,6 @@ public interface ExternalClients {
     record OcrResult(BigDecimal confidence, boolean passed, String raw) {
     }
 
-    record MockPayParams(String payChannel, String outTradeNo, String transactionId, BigDecimal amount) {
-    }
 }
 
 @Component
@@ -48,14 +42,6 @@ class MockOcrClient implements ExternalClients.OcrClient {
         boolean passed = realName != null && !realName.isBlank() && studentNo != null && !studentNo.isBlank();
         BigDecimal confidence = passed ? new BigDecimal("0.9000") : new BigDecimal("0.5000");
         return new ExternalClients.OcrResult(confidence, passed, "{\"provider\":\"mock\"}");
-    }
-}
-
-@Component
-class MockPaymentClient implements ExternalClients.PaymentClient {
-    @Override
-    public ExternalClients.MockPayParams createPay(Long orderId, String orderNo, BigDecimal amount) {
-        return new ExternalClients.MockPayParams("MOCK", orderNo, "mock-tx-" + orderId, amount);
     }
 }
 

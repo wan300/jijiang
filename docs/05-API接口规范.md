@@ -270,7 +270,7 @@ GET /api/user/verify/status
 POST /api/user/seller/pay-deposit
 ```
 
-**Response**：返回微信支付参数（同 3.11）。
+**Response**：保证金支付接口暂未在 V1.0 接入；正式接入时复用 B 支付服务链路。
 
 ### 3.5 申请注销账号
 
@@ -651,10 +651,10 @@ POST /api/order/refund/negotiate
 
 **Request**：`{ "orderId": 5001, "refundAmount": 67.50, "action": "agree" | "reject" }`
 
-### 5.11 支付下单（微信 JSAPI）
+### 5.11 支付下单（真实支付创建）
 
 ```
-POST /api/payment/wx-pay
+POST /api/payment/create
 ```
 
 **Request**：`{ "orderId": 5001 }`
@@ -665,22 +665,24 @@ POST /api/payment/wx-pay
 {
   "code": 0,
   "data": {
-    "timeStamp": "1714032000",
-    "nonceStr": "...",
-    "package": "prepay_id=wx...",
-    "signType": "RSA",
-    "paySign": "..."
+    "channel": "XUNHUPAY",
+    "orderId": 5001,
+    "orderNo": "JJ202605081200001",
+    "tradeOrderId": "JJ202605081200001",
+    "payUrl": "https://cashier.example.com/pay",
+    "qrCodeUrl": "https://cashier.example.com/qr",
+    "expireSeconds": 300
   }
 }
 ```
 
-### 5.12 微信支付回调（服务端→服务端）
+### 5.12 支付服务内部回调（B→A）
 
 ```
-POST /api/payment/wx-notify
+POST /internal/payment/callback
 ```
 
-> 由微信支付平台调用；应用层需验签、幂等处理。详见 [03-后端开发指南](./03-后端开发指南.md) §3.4.2。
+> 由 B 支付服务调用；A 需校验 `X-JJ-*` HMAC 签名、时间戳和 nonce，并做幂等入账。虎皮椒 `notify_url` 只打到 B：`POST /api/payment/xunhu-notify`。
 
 ---
 
@@ -922,10 +924,11 @@ POST /api/risk/text-check
 
 ## 13. WebHook 与第三方集成
 
-### 13.1 微信支付回调
+### 13.1 支付回调
 
-- 路径：`POST /api/payment/wx-notify`
-- 鉴权：微信支付 V3 签名验证
+- 虎皮椒到 B：`POST /api/payment/xunhu-notify`
+- B 到 A：`POST /internal/payment/callback`
+- 鉴权：虎皮椒 MD5 验签 + A/B 内部 HMAC-SHA256
 - 幂等：见后端开发指南 §3.4.2
 
 ### 13.2 微信订阅消息
@@ -949,11 +952,12 @@ withdraw_result       —— 提现结果
 1. GET  /api/service/detail?id=101
 2. POST /api/order/preview           → 确认价格
 3. POST /api/order/create            → orderNo=..., status=10
-4. POST /api/payment/wx-pay          → 微信支付参数
-5. [客户端] uni.requestPayment
-6. [微信服务器] → POST /api/payment/wx-notify → 订单 status=20
-7. GET  /api/order/detail?id=5001    → 客户端轮询或被动通知
-8. [讲师] POST /api/order/accept     → status=30
+4. POST /api/payment/create          → 虎皮椒收银台/二维码
+5. [客户端] 打开收银台或展示二维码
+6. [虎皮椒] → B /api/payment/xunhu-notify
+7. [B支付服务] → A /internal/payment/callback → 订单 status=20
+8. GET  /api/order/detail?id=5001    → 客户端轮询或被动通知
+9. [讲师] POST /api/order/accept     → status=30
 9. [讲师] POST /api/order/deliver    → status=40
 10. [买家] POST /api/order/confirm   → status=50
 11. [买家] POST /api/review/submit
