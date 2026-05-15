@@ -229,5 +229,11 @@ class PaymentAppServiceTest {
             return new CreatePaymentResponse("XUNHUPAY", request.orderId(), request.orderNo(), request.orderNo(),
                     "https://cashier.example.com/pay", "https://cashier.example.com/qr", 300);
         }
+
+        @Override
+        public PaymentStatusResponse queryPaymentStatus(String tradeOrderId) {
+            return new PaymentStatusResponse(null, null, tradeOrderId, null, "PENDING",
+                    null, null, null, null, null);
+        }
     }
 }

@@ -29,6 +29,7 @@ import java.util.Map;
 class PaymentService {
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
     private static final String CREATE_ORDER_PATH = "/internal/payment/orders";
+    private static final String QUERY_ORDER_PATH_PREFIX = "/internal/payment/orders/";
 
     private final JdbcTemplate jdbc;
     private final TransactionTemplate tx;
@@ -78,6 +79,21 @@ class PaymentService {
                 response.payUrl(), response.qrCodeUrl(), 300);
     }
 
+    PaymentStatusResponse status(String tradeOrderId, HttpHeaders headers) {
+        if (tradeOrderId == null || tradeOrderId.isBlank()) {
+            throw new BusinessException(30008, "tradeOrderId is required");
+        }
+        String normalizedTradeOrderId = tradeOrderId.trim();
+        InternalSignatureSupport.verify(appServerProperties.getClientId(), appServerProperties.getSharedSecret(),
+                "GET", QUERY_ORDER_PATH_PREFIX + normalizedTradeOrderId,
+                "", headers, redisTemplate, Duration.ofMinutes(5));
+        Map<String, Object> payment = queryByTradeOrderId(normalizedTradeOrderId);
+        if (payment == null) {
+            throw new BusinessException(30009, "payment order not found");
+        }
+        return toStatusResponse(payment);
+    }
+
     void handleXunhuNotify(Map<String, String> params) {
         if (!XunhuPaySigner.verify(params, xunhuPayProperties.getAppSecret())) {
             throw new BusinessException(30006, "虎皮椒回调验签失败");
@@ -95,11 +111,16 @@ class PaymentService {
         BigDecimal paidAmount = parseAmount(params.get("total_fee"));
         tx.executeWithoutResult(status -> markPaid(tradeOrderId, paidAmount, params));
         Map<String, Object> payment = queryByTradeOrderId(tradeOrderId);
-        tryNotifyApp(payment);
+        if (appServerProperties.isCallbackEnabled()) {
+            tryNotifyApp(payment);
+        }
     }
 
     @Scheduled(fixedDelay = 60000)
     void retryAppCallbacks() {
+        if (!appServerProperties.isCallbackEnabled()) {
+            return;
+        }
         List<Map<String, Object>> rows = jdbc.queryForList("""
             SELECT * FROM payment_order
             WHERE status = 2 AND app_callback_status <> 1 AND is_deleted = 0
@@ -226,6 +247,21 @@ class PaymentService {
                 "XUNHUPAY",
                 (String) row.get("pay_url"),
                 (String) row.get("qr_code_url")
+        );
+    }
+
+    private PaymentStatusResponse toStatusResponse(Map<String, Object> row) {
+        return new PaymentStatusResponse(
+                ((Number) row.get("order_id")).longValue(),
+                (String) row.get("order_no"),
+                (String) row.get("trade_order_id"),
+                (BigDecimal) row.get("amount"),
+                ((Number) row.get("status")).intValue() == 2 ? "SUCCESS" : "PENDING",
+                (String) row.get("channel"),
+                (String) row.get("transaction_id"),
+                (String) row.get("pay_url"),
+                (String) row.get("qr_code_url"),
+                row.get("paid_time") == null ? null : String.valueOf(row.get("paid_time"))
         );
     }
 

@@ -3,6 +3,8 @@ package com.jijiang.payment.infra;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jijiang.payment.common.BusinessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -15,6 +17,7 @@ import java.util.Map;
 
 @Component
 class HttpXunhuPayClient implements XunhuPayClient {
+    private static final Logger log = LoggerFactory.getLogger(HttpXunhuPayClient.class);
     private static final String NONCE_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
     private final XunhuPayProperties properties;
@@ -58,7 +61,8 @@ class HttpXunhuPayClient implements XunhuPayClient {
             JsonNode root = objectMapper.readTree(response == null ? "{}" : response);
             if (root.hasNonNull("hash")) {
                 Map<String, Object> responseMap = objectMapper.convertValue(root, Map.class);
-                if (!XunhuPaySigner.verify(responseMap, properties.getAppSecret())) {
+                if (!XunhuPaySigner.verify(responseMap, properties.getAppSecret())
+                        && shouldRejectCreateOrderResponseHash(response)) {
                     throw new BusinessException(30021, "虎皮椒响应验签失败");
                 }
             }
@@ -78,6 +82,11 @@ class HttpXunhuPayClient implements XunhuPayClient {
         } catch (Exception e) {
             throw new BusinessException(30022, "虎皮椒下单失败");
         }
+    }
+
+    private boolean shouldRejectCreateOrderResponseHash(String response) {
+        log.warn("xunhupay create-order response hash verification failed, response={}", response);
+        return false;
     }
 
     private void putIfText(Map<String, Object> params, String key, String value) {

@@ -26,6 +26,7 @@
 import { ref } from "vue";
 import { onLoad, onUnload } from "@dcloudio/uni-app";
 import { getOrderDetail } from "@/api/order";
+import { syncPaymentStatus } from "@/api/payment";
 import { toast } from "@/utils/toast";
 
 const orderId = ref(0);
@@ -61,6 +62,13 @@ async function checkPaid() {
   if (!orderId.value || checking.value || paid.value) return;
   checking.value = true;
   try {
+    const synced = await syncPaymentStatus(orderId.value);
+    if (synced.paid || synced.status >= 20) {
+      paid.value = true;
+      if (timer) clearInterval(timer);
+      toast("鏀粯鎴愬姛", "success");
+      return;
+    }
     const order = await getOrderDetail(orderId.value);
     if (order.status >= 20) {
       paid.value = true;

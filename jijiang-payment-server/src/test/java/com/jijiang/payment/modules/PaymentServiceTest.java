@@ -36,6 +36,7 @@ class PaymentServiceTest {
     private PaymentService service;
     private StubXunhuPayClient xunhuPayClient;
     private AppServerClient appServerClient;
+    private AppServerProperties appServerProperties;
 
     @BeforeEach
     void setUp() {
@@ -53,7 +54,7 @@ class PaymentServiceTest {
         xunhuProperties.setAppId("appid");
         xunhuProperties.setAppSecret("xunhu-secret");
         xunhuProperties.setNotifyUrl("https://pay.example.com/api/payment/xunhu-notify");
-        AppServerProperties appServerProperties = new AppServerProperties();
+        appServerProperties = new AppServerProperties();
         appServerProperties.setCallbackUrl("https://api.example.com/internal/payment/callback");
         appServerProperties.setClientId(CLIENT_ID);
         appServerProperties.setSharedSecret(SECRET);
@@ -99,6 +100,22 @@ class PaymentServiceTest {
         assertThat(((Number) payment.get("status")).intValue()).isEqualTo(2);
         assertThat(((Number) payment.get("app_callback_status")).intValue()).isEqualTo(1);
         verify(appServerClient).notifyPaid(any(PaymentCallbackRequest.class));
+    }
+
+    @Test
+    void successfulNotifySkipsAppCallbackWhenDisabled() {
+        appServerProperties.setCallbackEnabled(false);
+        String body = createBody("JJ1", "12.34");
+        service.create(body, signedHeaders("/internal/payment/orders", body));
+
+        service.handleXunhuNotify(notifyParams("JJ1", "12.34"));
+        service.retryAppCallbacks();
+
+        Map<String, Object> payment = jdbc.queryForMap("SELECT * FROM payment_order WHERE order_no = 'JJ1'");
+        assertThat(((Number) payment.get("status")).intValue()).isEqualTo(2);
+        assertThat(((Number) payment.get("app_callback_status")).intValue()).isEqualTo(0);
+        assertThat(((Number) payment.get("app_callback_attempts")).intValue()).isEqualTo(0);
+        verify(appServerClient, never()).notifyPaid(any(PaymentCallbackRequest.class));
     }
 
     @Test

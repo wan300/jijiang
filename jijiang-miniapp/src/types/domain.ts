@@ -89,3 +89,14 @@ export interface PaymentCreateResult {
   qrCodeUrl?: string;
   expireSeconds: number;
 }
+
+export interface PaymentSyncResult {
+  orderId: number;
+  orderNo: string;
+  status: number;
+  paid: boolean;
+  paymentStatus: "PENDING" | "SUCCESS" | string;
+  tradeOrderId?: string;
+  paymentRecordStatus?: number;
+  payTime?: string;
+}

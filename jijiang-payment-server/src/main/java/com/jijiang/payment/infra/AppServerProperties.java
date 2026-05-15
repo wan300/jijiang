@@ -6,9 +6,18 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "jijiang.app-server")
 public class AppServerProperties {
+    private boolean callbackEnabled = true;
     private String callbackUrl = "";
     private String clientId = "jijiang-app";
     private String sharedSecret = "";
+
+    public boolean isCallbackEnabled() {
+        return callbackEnabled;
+    }
+
+    public void setCallbackEnabled(boolean callbackEnabled) {
+        this.callbackEnabled = callbackEnabled;
+    }
 
     public String getCallbackUrl() {
         return callbackUrl;

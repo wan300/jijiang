@@ -11,6 +11,7 @@ import java.util.Map;
 @Component
 class HttpPaymentServerClient implements PaymentServerClient {
     private static final String CREATE_ORDER_PATH = "/internal/payment/orders";
+    private static final String QUERY_ORDER_PATH_PREFIX = "/internal/payment/orders/";
 
     private final PaymentServerProperties properties;
     private final ObjectMapper objectMapper;
@@ -48,6 +49,37 @@ class HttpPaymentServerClient implements PaymentServerClient {
             throw e;
         } catch (Exception e) {
             throw new BusinessException(30022, "支付服务下单失败");
+        }
+    }
+
+    @Override
+    public PaymentStatusResponse queryPaymentStatus(String tradeOrderId) {
+        if (!properties.configured()) {
+            throw new BusinessException(30020, "payment server is not configured");
+        }
+        if (tradeOrderId == null || tradeOrderId.isBlank()) {
+            throw new BusinessException(30008, "tradeOrderId is required");
+        }
+        String normalizedTradeOrderId = tradeOrderId.trim();
+        String path = QUERY_ORDER_PATH_PREFIX + normalizedTradeOrderId;
+        try {
+            Map<String, String> headers = InternalSignatureSupport.signedHeaders(
+                    properties.getClientId(),
+                    properties.getSharedSecret(),
+                    "GET",
+                    path,
+                    ""
+            );
+            String response = restClient.get()
+                    .uri(trimRight(properties.getBaseUrl()) + path)
+                    .headers(httpHeaders -> headers.forEach(httpHeaders::set))
+                    .retrieve()
+                    .body(String.class);
+            return objectMapper.readValue(response == null ? "{}" : response, PaymentStatusResponse.class);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(30023, "query payment server status failed");
         }
     }
 

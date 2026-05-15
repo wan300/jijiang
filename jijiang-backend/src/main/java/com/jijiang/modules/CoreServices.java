@@ -507,6 +507,72 @@ class PaymentAppService {
         return cashier(orderId, orderNo, response.tradeOrderId(), response.payUrl(), response.qrCodeUrl());
     }
 
+    Map<String, Object> syncPayment(UserContext ctx, Long orderId) {
+        if (orderId == null) {
+            throw new BusinessException(30003, "订单不能为空");
+        }
+        Map<String, Object> order = jdbc.queryForMap("SELECT * FROM order_main WHERE id = ? AND is_deleted = 0", orderId);
+        if (!ctx.userId().equals(((Number) order.get("buyer_id")).longValue())) {
+            throw new BusinessException(30003, "无权同步该订单支付状态");
+        }
+
+        String orderNo = (String) order.get("order_no");
+        int localStatus = ((Number) order.get("status")).intValue();
+        Map<String, Object> payment = queryPaymentByOrderId(orderId);
+        String paymentStatus = localStatus >= 20 ? "SUCCESS" : "PENDING";
+        String tradeOrderId = payment == null ? orderNo : (String) payment.get("out_trade_no");
+
+        if (localStatus < 20 && tradeOrderId != null && !tradeOrderId.isBlank()) {
+            var remote = paymentServerClient.queryPaymentStatus(tradeOrderId);
+            paymentStatus = remote.status();
+            if ("SUCCESS".equals(remote.status())) {
+                BigDecimal expectedAmount = payment == null ? (BigDecimal) order.get("amount") : (BigDecimal) payment.get("amount");
+                if (remote.amount() == null || expectedAmount.compareTo(remote.amount()) != 0) {
+                    throw new BusinessException(30010, "支付服务状态同步金额不匹配");
+                }
+                tx.executeWithoutResult(status -> {
+                    Integer exists = jdbc.queryForObject("SELECT COUNT(*) FROM payment_record WHERE out_trade_no = ? AND is_deleted = 0",
+                            Integer.class, remote.tradeOrderId());
+                    if (exists == null || exists == 0) {
+                        jdbc.update("""
+                            INSERT INTO payment_record (order_id, out_trade_no, transaction_id, amount, status, pay_channel, pay_url)
+                            VALUES (?, ?, NULL, ?, 1, 'XUNHUPAY', ?)
+                            """, orderId, remote.tradeOrderId(), expectedAmount, remote.payUrl());
+                    }
+                    jdbc.update("""
+                        UPDATE payment_record
+                        SET status = 2, transaction_id = ?, pay_time = CURRENT_TIMESTAMP,
+                            update_time = CURRENT_TIMESTAMP
+                        WHERE out_trade_no = ? AND status <> 2 AND is_deleted = 0
+                        """, remote.transactionId(), remote.tradeOrderId());
+                    int orderUpdated = jdbc.update("""
+                        UPDATE order_main
+                        SET status = 20, pay_time = CURRENT_TIMESTAMP, expire_time = ?
+                        WHERE id = ? AND status = 10 AND is_deleted = 0
+                        """, Timestamp.valueOf(LocalDateTime.now().plusHours(24)), orderId);
+                    if (orderUpdated > 0) {
+                        orderAppService.insertOrderLog(orderId, 10, 20, ctx.userId(), "支付状态同步成功");
+                    }
+                });
+                order = jdbc.queryForMap("SELECT * FROM order_main WHERE id = ? AND is_deleted = 0", orderId);
+                payment = queryPayment(remote.tradeOrderId());
+            }
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("orderId", orderId);
+        result.put("orderNo", orderNo);
+        result.put("status", ((Number) order.get("status")).intValue());
+        result.put("paid", ((Number) order.get("status")).intValue() >= 20);
+        result.put("paymentStatus", paymentStatus);
+        result.put("tradeOrderId", tradeOrderId);
+        if (payment != null) {
+            result.put("paymentRecordStatus", ((Number) payment.get("status")).intValue());
+            result.put("payTime", payment.get("pay_time"));
+        }
+        return result;
+    }
+
     void handlePaymentServerCallback(String rawBody, HttpHeaders headers) {
         InternalSignatureSupport.verify(paymentServerProperties.getClientId(), paymentServerProperties.getSharedSecret(),
                 "POST", PAYMENT_CALLBACK_PATH, rawBody, headers, redisTemplate, Duration.ofMinutes(5));
@@ -569,6 +635,18 @@ class PaymentAppService {
     private Map<String, Object> queryPayment(String outTradeNo) {
         try {
             return jdbc.queryForMap("SELECT * FROM payment_record WHERE out_trade_no = ? AND is_deleted = 0", outTradeNo);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
+    }
+
+    private Map<String, Object> queryPaymentByOrderId(Long orderId) {
+        try {
+            return jdbc.queryForMap("""
+                SELECT * FROM payment_record
+                WHERE order_id = ? AND is_deleted = 0
+                ORDER BY id DESC LIMIT 1
+                """, orderId);
         } catch (EmptyResultDataAccessException e) {
             return null;
         }

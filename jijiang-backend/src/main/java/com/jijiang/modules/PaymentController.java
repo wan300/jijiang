@@ -24,6 +24,13 @@ public class PaymentController {
         var ctx = authSupport.parseBearer(authorization);
         return Result.ok(paymentAppService.createPayment(ctx, request.orderId()));
     }
+
+    @PostMapping("/sync")
+    public Result<Map<String, Object>> sync(@RequestHeader("Authorization") String authorization,
+                                            @RequestBody OrderActionRequest request) {
+        var ctx = authSupport.parseBearer(authorization);
+        return Result.ok(paymentAppService.syncPayment(ctx, request.orderId()));
+    }
 }
 
 @RestController

@@ -28,6 +28,7 @@ jijiang:
     return-url: ${XUNHU_RETURN_URL:}
     callback-url: ${XUNHU_CALLBACK_URL:}
   app-server:
+    callback-enabled: ${APP_SERVER_CALLBACK_ENABLED:true}
     callback-url: ${APP_SERVER_CALLBACK_URL:}
     client-id: ${APP_SERVER_CLIENT_ID:jijiang-app}
     shared-secret: ${APP_SERVER_SHARED_SECRET:}
