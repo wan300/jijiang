@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.math.RoundingMode;
+import java.net.URI;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -70,8 +71,8 @@ class HttpXunhuPayClient implements XunhuPayClient {
             if (errcode != 0) {
                 throw new BusinessException(30022, "虎皮椒下单失败：" + root.path("errmsg").asText("unknown"));
             }
-            String url = text(root, "url");
-            String qrCodeUrl = text(root, "url_qrcode");
+            String url = normalizeResponseUrl(text(root, "url"), properties.getGateway());
+            String qrCodeUrl = normalizeResponseUrl(text(root, "url_qrcode"), firstText(url, properties.getGateway()));
             String payUrl = firstText(url, qrCodeUrl);
             if (payUrl == null) {
                 throw new BusinessException(30022, "虎皮椒未返回付款地址");
@@ -109,6 +110,24 @@ class HttpXunhuPayClient implements XunhuPayClient {
             return null;
         }
         return node.asText();
+    }
+
+    static String normalizeResponseUrl(String value, String baseUrl) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.startsWith("//")) {
+            return "https:" + trimmed;
+        }
+        URI uri = URI.create(trimmed);
+        if (uri.isAbsolute()) {
+            return trimmed;
+        }
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return trimmed;
+        }
+        return URI.create(baseUrl.trim()).resolve(uri).toString();
     }
 
     private String firstText(String... values) {

@@ -8,6 +8,16 @@
 - `GET /internal/payment/orders/{tradeOrderId}`：A 后端主动查询支付状态，使用 `X-JJ-*` HMAC 签名。
 - `POST /api/payment/xunhu-notify`：虎皮椒异步回调入口。
 
+## 本地启动
+
+```bash
+cd jijiang-payment-server
+cp .env.example .env
+mvn spring-boot:run
+```
+
+`application.yml` 会自动读取当前目录下的 `.env`，不依赖根目录 `.env`。开发环境默认使用 H2 内存库；如需连接共享 MySQL/Redis，可在本目录 `.env` 中设置 `SPRING_PROFILES_ACTIVE=shared-db` 并填写 `PAYMENT_DB_*`、`REDIS_*`。
+
 ## 中心支付服务器模式
 
 推荐用于多台电脑联调：只开放支付服务器的 `6670` 端口，让外部电脑主动访问支付服务器，支付服务器不主动回调外部电脑。

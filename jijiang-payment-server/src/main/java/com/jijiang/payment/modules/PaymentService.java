@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.net.URI;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -227,16 +228,20 @@ class PaymentService {
     }
 
     private CreatePaymentResponse toResponse(Map<String, Object> row) {
+        String payUrl = normalizeStoredUrl((String) row.get("pay_url"), xunhuPayProperties.getGateway());
+        String qrCodeUrl = normalizeStoredUrl((String) row.get("qr_code_url"), firstText(payUrl, xunhuPayProperties.getGateway()));
         return new CreatePaymentResponse("XUNHUPAY",
                 ((Number) row.get("order_id")).longValue(),
                 (String) row.get("order_no"),
                 (String) row.get("trade_order_id"),
-                (String) row.get("pay_url"),
-                (String) row.get("qr_code_url"),
+                payUrl,
+                qrCodeUrl,
                 300);
     }
 
     private PaymentCallbackRequest toCallback(Map<String, Object> row) {
+        String payUrl = normalizeStoredUrl((String) row.get("pay_url"), xunhuPayProperties.getGateway());
+        String qrCodeUrl = normalizeStoredUrl((String) row.get("qr_code_url"), firstText(payUrl, xunhuPayProperties.getGateway()));
         return new PaymentCallbackRequest(
                 ((Number) row.get("order_id")).longValue(),
                 (String) row.get("order_no"),
@@ -245,12 +250,14 @@ class PaymentService {
                 (BigDecimal) row.get("amount"),
                 "SUCCESS",
                 "XUNHUPAY",
-                (String) row.get("pay_url"),
-                (String) row.get("qr_code_url")
+                payUrl,
+                qrCodeUrl
         );
     }
 
     private PaymentStatusResponse toStatusResponse(Map<String, Object> row) {
+        String payUrl = normalizeStoredUrl((String) row.get("pay_url"), xunhuPayProperties.getGateway());
+        String qrCodeUrl = normalizeStoredUrl((String) row.get("qr_code_url"), firstText(payUrl, xunhuPayProperties.getGateway()));
         return new PaymentStatusResponse(
                 ((Number) row.get("order_id")).longValue(),
                 (String) row.get("order_no"),
@@ -259,10 +266,37 @@ class PaymentService {
                 ((Number) row.get("status")).intValue() == 2 ? "SUCCESS" : "PENDING",
                 (String) row.get("channel"),
                 (String) row.get("transaction_id"),
-                (String) row.get("pay_url"),
-                (String) row.get("qr_code_url"),
+                payUrl,
+                qrCodeUrl,
                 row.get("paid_time") == null ? null : String.valueOf(row.get("paid_time"))
         );
+    }
+
+    private String normalizeStoredUrl(String value, String baseUrl) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.startsWith("//")) {
+            return "https:" + trimmed;
+        }
+        URI uri = URI.create(trimmed);
+        if (uri.isAbsolute()) {
+            return trimmed;
+        }
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return trimmed;
+        }
+        return URI.create(baseUrl.trim()).resolve(uri).toString();
+    }
+
+    private String firstText(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 
     private String writeJson(Object value) {

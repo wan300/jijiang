@@ -31,7 +31,7 @@ services:
 
   backend:
     build:
-      context: ./jijiang-backend
+      context: ./12group-backend
     container_name: jijiang-backend
     restart: unless-stopped
     depends_on:
@@ -86,7 +86,7 @@ services:
 
   frontend:
     build:
-      context: ./jijiang-miniapp
+      context: ./12group-frontend
       args:
         VITE_API_BASE: ${VITE_API_BASE:-http://localhost:8080}
     container_name: jijiang-frontend
@@ -98,7 +98,7 @@ services:
 
   admin:
     build:
-      context: ./jijiang-backend/jijiang-admin
+      context: ./12group-backend/jijiang-admin
       args:
         VITE_API_BASE: ${ADMIN_VITE_API_BASE:-}
     container_name: jijiang-admin

@@ -23,38 +23,62 @@ private.
 
 ## Local development
 
-Run the main backend with the shared database profile:
+Run the main backend with the shared database profile from its own directory:
 
 ```bash
-cd jijiang-backend
-SPRING_PROFILES_ACTIVE=shared-db \
-DB_URL='jdbc:mysql://39.102.114.72:3307/jijiang?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true' \
-DB_USERNAME=jijiang \
-DB_PASSWORD='your-db-password' \
-REDIS_HOST=39.102.114.72 \
-REDIS_PORT=6380 \
-REDIS_PASSWORD='your-redis-password' \
+cd 12group-backend
+cp .env.example .env
+```
+
+Then edit `12group-backend/.env`:
+
+```env
+SPRING_PROFILES_ACTIVE=shared-db
+DB_URL=jdbc:mysql://39.102.114.72:3307/jijiang?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+DB_USERNAME=jijiang
+DB_PASSWORD=your-db-password
+REDIS_HOST=39.102.114.72
+REDIS_PORT=6380
+REDIS_PASSWORD=your-redis-password
+```
+
+Start it:
+
+```bash
 mvn spring-boot:run
 ```
 
-Run the payment server:
+Run the payment server from its own directory:
 
 ```bash
 cd jijiang-payment-server
-SPRING_PROFILES_ACTIVE=shared-db \
-PAYMENT_DB_URL='jdbc:mysql://39.102.114.72:3307/jijiang?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true' \
-PAYMENT_DB_USERNAME=jijiang \
-PAYMENT_DB_PASSWORD='your-db-password' \
-REDIS_HOST=39.102.114.72 \
-REDIS_PORT=6380 \
-REDIS_PASSWORD='your-redis-password' \
+cp .env.example .env
+```
+
+Then edit `jijiang-payment-server/.env`:
+
+```env
+SPRING_PROFILES_ACTIVE=shared-db
+PAYMENT_DB_URL=jdbc:mysql://39.102.114.72:3307/jijiang?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+PAYMENT_DB_USERNAME=jijiang
+PAYMENT_DB_PASSWORD=your-db-password
+REDIS_HOST=39.102.114.72
+REDIS_PORT=6380
+REDIS_PASSWORD=your-redis-password
+```
+
+Start it:
+
+```bash
 mvn spring-boot:run
 ```
 
-The frontend still points at whichever local backend is being run:
+The frontend points at whichever local backend is being run from its own env file:
 
 ```env
-VITE_API_BASE=http://localhost:8080
+# 12group-frontend/.env
+VITE_API_BASE=
+VITE_API_PROXY_TARGET=http://localhost:8080
 ```
 
 ## Migration rule

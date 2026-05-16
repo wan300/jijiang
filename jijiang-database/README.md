@@ -33,7 +33,7 @@ be used for production.
 Run the main backend locally:
 
 ```bash
-cd jijiang-backend
+cd 12group-backend
 SPRING_PROFILES_ACTIVE=shared-db \
 DB_URL='jdbc:mysql://39.102.114.72:3307/jijiang?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true' \
 DB_USERNAME=jijiang \
