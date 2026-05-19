@@ -1,0 +1,14 @@
+name: ${COMPOSE_PROJECT_NAME:-jijiang-frontend}
+
+services:
+  frontend:
+    build:
+      context: .
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-}
+    container_name: ${FRONTEND_CONTAINER_NAME:-jijiang-frontend}
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${FRONTEND_PORT:-8081}:80"

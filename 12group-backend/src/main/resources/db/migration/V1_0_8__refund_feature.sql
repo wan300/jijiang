@@ -1,0 +1,21 @@
+CREATE TABLE refund_request (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL COMMENT '申请人(买家)',
+    seller_id BIGINT NOT NULL COMMENT '卖家ID',
+    reason VARCHAR(500) NOT NULL COMMENT '退款原因',
+    evidence_urls TEXT COMMENT '证据图片URL，JSON数组',
+    amount DECIMAL(10,2) COMMENT '申请退款金额',
+    status TINYINT NOT NULL DEFAULT 0 COMMENT '0待审核 1已退款 2已驳回 3卖家拒绝(预留)',
+    reviewer_id BIGINT COMMENT '审核管理员ID',
+    review_remark VARCHAR(500) COMMENT '审核备注',
+    review_time DATETIME,
+    deduct_deposit DECIMAL(10,2) DEFAULT 0 COMMENT '扣除保证金',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_deleted TINYINT NOT NULL DEFAULT 0,
+    INDEX idx_refund_order (order_id),
+    INDEX idx_refund_user (user_id),
+    INDEX idx_refund_seller (seller_id),
+    INDEX idx_refund_status (status)
+);

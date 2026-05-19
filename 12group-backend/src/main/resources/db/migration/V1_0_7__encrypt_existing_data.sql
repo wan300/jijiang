@@ -1,0 +1,13 @@
+-- 历史数据加密迁移 (占位)
+--
+-- 说明：当 ENCRYPTION_KEY 环境变量配置后，需要将 user 和 user_verify_record 表中
+-- 已有的明文 PII 数据加密回填。此迁移在开发环境（未配置密钥）时无实际操作。
+--
+-- 生产环境部署前需执行 Java 迁移或手动加密：
+-- 1. 读取所有 user.real_name_encrypted, user.student_no_encrypted
+-- 2. 读取所有 user_verify_record.real_name, user_verify_record.student_no
+-- 3. 使用 EncryptionService.encrypt() 加密后写回
+-- 4. 验证加密格式以 "ENC:" 开头
+--
+-- 当前版本：标记迁移已执行（DDL 已在 V1_0_5 中完成，加密逻辑由应用层处理）
+SELECT 1;

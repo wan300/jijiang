@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:jijiang;MODE=MySQL;DATABASE_TO_UPPER=FALSE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  flyway:
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+jijiang:
+  payment-server:
+    base-url: ${PAYMENT_SERVER_BASE_URL:http://localhost:6670}
+    client-id: ${PAYMENT_SERVER_CLIENT_ID:jijiang-app}
+    shared-secret: ${PAYMENT_SERVER_SHARED_SECRET:dev-payment-secret-change-me}

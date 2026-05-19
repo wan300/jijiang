@@ -1,0 +1,14 @@
+{
+  "compileType": "miniprogram",
+  "miniprogramRoot": "dist/build/mp-weixin/",
+  "appid": "wx7961fa27f4fced94",
+  "projectname": "12group-frontend",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "postcss": true,
+    "minified": false,
+    "newFeature": true,
+    "bigPackageSizeSupport": true
+  }
+}
