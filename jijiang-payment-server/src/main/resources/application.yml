@@ -7,7 +7,7 @@ spring:
   application:
     name: jijiang-payment-server
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   flyway:
     enabled: true
     baseline-on-migrate: true
