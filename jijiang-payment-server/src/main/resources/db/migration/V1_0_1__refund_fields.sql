@@ -1,0 +1,5 @@
+ALTER TABLE payment_order
+    ADD COLUMN refund_amount DECIMAL(10,2) DEFAULT NULL,
+    ADD COLUMN refund_transaction_id VARCHAR(64) DEFAULT NULL,
+    ADD COLUMN refund_time DATETIME DEFAULT NULL,
+    ADD COLUMN refund_status TINYINT NOT NULL DEFAULT 0;

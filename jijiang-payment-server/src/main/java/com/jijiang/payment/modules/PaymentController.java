@@ -24,6 +24,13 @@ public class PaymentController {
         return paymentService.status(tradeOrderId, headers);
     }
 
+    @PostMapping("/internal/payment/orders/{tradeOrderId}/refund")
+    public Map<String, Object> refund(@PathVariable String tradeOrderId,
+                                      @RequestBody String rawBody,
+                                      @RequestHeader HttpHeaders headers) {
+        return paymentService.refund(tradeOrderId, rawBody, headers);
+    }
+
     @PostMapping(value = "/api/payment/xunhu-notify", produces = MediaType.TEXT_PLAIN_VALUE)
     public String xunhuNotify(@RequestParam Map<String, String> params) {
         try {
