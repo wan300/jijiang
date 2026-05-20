@@ -116,6 +116,7 @@ const orderStatuses = [
   { value: 40, label: "待确认" },
   { value: 50, label: "已完成" },
   { value: 60, label: "已关闭" },
+  { value: 80, label: "已退款" },
 ];
 const loading = ref(false);
 const keyword = ref("");

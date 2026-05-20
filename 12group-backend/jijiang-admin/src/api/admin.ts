@@ -4,6 +4,7 @@ import type {
   OrderDetailResult,
   OrderRecord,
   PageResult,
+  RefundRecord,
   ServiceRecord,
   VerifyRecord,
 } from "@/types/admin";
@@ -38,4 +39,12 @@ export function getOrders(params: { page: number; pageSize: number; status?: num
 
 export function getOrderDetail(orderId: number) {
   return request<OrderDetailResult>("/admin/order/detail", { params: { orderId } });
+}
+
+export function getRefunds(params: { page: number; pageSize: number; status?: number; keyword?: string }) {
+  return request<PageResult<RefundRecord>>("/admin/refund/list", { params });
+}
+
+export function reviewRefund(data: { refundId: number; passed: boolean; reason?: string; deductDeposit?: number }) {
+  return request<void>("/admin/refund/review", { method: "POST", data });
 }

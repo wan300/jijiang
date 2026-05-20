@@ -26,11 +26,11 @@ export const useUserStore = defineStore("user", {
     campusId: (state) => Number(state.userInfo?.campusId || 1),
   },
   actions: {
-    async login() {
-      let code = DEV_LOGIN_CODE;
+    async login(codeOverride?: string) {
+      let code = codeOverride || DEV_LOGIN_CODE;
       // #ifdef MP-WEIXIN
       const wxLogin = await uni.login({ provider: "weixin" });
-      code = wxLogin.code || DEV_LOGIN_CODE;
+      code = codeOverride || wxLogin.code || DEV_LOGIN_CODE;
       // #endif
       const result = await loginByCode(code);
       this.applyLogin(result.accessToken, result.refreshToken, result.userInfo);

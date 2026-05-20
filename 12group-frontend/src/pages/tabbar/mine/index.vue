@@ -34,6 +34,9 @@
         <text class="arrow">></text>
       </view>
     </view>
+    <!-- #ifdef H5 -->
+    <DevAccountSwitcher />
+    <!-- #endif -->
     <ji-tab-bar />
   </view>
 </template>
@@ -41,12 +44,14 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import JiTabBar from "@/components/ji-tab-bar.vue";
+import DevAccountSwitcher from "@/components/dev-account-switcher.vue";
 import { useUserStore } from "@/store/user";
 import { toast } from "@/utils/toast";
 
 const user = useUserStore();
 const verifyText = computed(() => (user.isVerified ? "已实名" : user.userInfo?.verifyStatus === 1 ? "审核中" : "未实名"));
 const menus = [
+  { text: "我的订单", url: "/pages/order/list" },
   { text: "实名认证", url: "/pages/user/verify" },
   { text: "个人资料", url: "/pages/user/profile" },
   { text: "我的信誉", url: "/pages/user/my-credit" },

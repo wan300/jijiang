@@ -125,3 +125,19 @@ export interface OrderDetailResult {
   logs: OrderLogRecord[];
   messages: MessageRecord[];
 }
+
+export interface RefundRecord {
+  id: number;
+  orderId: number;
+  userId: number;
+  buyerName?: string;
+  sellerId: number;
+  sellerName?: string;
+  reason: string;
+  amount: number;
+  status: number;
+  reviewRemark?: string;
+  reviewTime?: string;
+  deductDeposit: number;
+  createTime?: string;
+}

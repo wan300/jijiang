@@ -25,6 +25,10 @@
           <el-icon><Tickets /></el-icon>
           <span>订单监控</span>
         </el-menu-item>
+        <el-menu-item index="/refunds">
+          <el-icon><Money /></el-icon>
+          <span>退款审核</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -49,7 +53,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { Avatar, Collection, DataAnalysis, SwitchButton, Tickets, UserFilled } from "@element-plus/icons-vue";
+import { Avatar, Collection, DataAnalysis, Money, SwitchButton, Tickets, UserFilled } from "@element-plus/icons-vue";
 import { useAuthStore } from "@/store/auth";
 
 const route = useRoute();

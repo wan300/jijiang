@@ -6,6 +6,7 @@ import DashboardView from "@/views/DashboardView.vue";
 import VerifyView from "@/views/VerifyView.vue";
 import ServiceView from "@/views/ServiceView.vue";
 import OrderView from "@/views/OrderView.vue";
+import RefundView from "@/views/RefundView.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -20,6 +21,7 @@ const router = createRouter({
         { path: "verify", component: VerifyView, meta: { title: "实名审核" } },
         { path: "services", component: ServiceView, meta: { title: "服务管理" } },
         { path: "orders", component: OrderView, meta: { title: "订单监控" } },
+        { path: "refunds", component: RefundView, meta: { title: "退款审核" } },
       ],
     },
   ],

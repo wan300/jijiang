@@ -22,15 +22,35 @@ export function orderStatusText(status?: number) {
     40: "待确认",
     50: "已完成",
     60: "已关闭",
+    70: "退款中",
+    80: "已退款",
   };
   return status === undefined ? "全部" : map[status] || `状态 ${status}`;
 }
 
 export function orderStatusType(status?: number) {
   if (status === 50) return "success";
+  if (status === 80) return "success";
   if (status === 10 || status === 20 || status === 40) return "warning";
   if (status === 30) return "primary";
   if (status === 60) return "info";
+  if (status === 70) return "danger";
+  return "";
+}
+
+export function refundStatusText(status?: number) {
+  const map: Record<number, string> = {
+    0: "待审核",
+    1: "已退款",
+    2: "已驳回",
+  };
+  return status === undefined ? "全部" : map[status] || `状态 ${status}`;
+}
+
+export function refundStatusType(status?: number) {
+  if (status === 1) return "success";
+  if (status === 0) return "warning";
+  if (status === 2) return "info";
   return "";
 }
 
