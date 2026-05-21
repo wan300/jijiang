@@ -31,6 +31,7 @@ class PaymentService {
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
     private static final String CREATE_ORDER_PATH = "/internal/payment/orders";
     private static final String QUERY_ORDER_PATH_PREFIX = "/internal/payment/orders/";
+    private static final String REFUND_ORDER_PATH_SUFFIX = "/refund";
 
     private final JdbcTemplate jdbc;
     private final TransactionTemplate tx;
@@ -93,6 +94,62 @@ class PaymentService {
             throw new BusinessException(30009, "payment order not found");
         }
         return toStatusResponse(payment);
+    }
+
+    Map<String, Object> refund(String tradeOrderId, String rawBody, HttpHeaders headers) {
+        if (tradeOrderId == null || tradeOrderId.isBlank()) {
+            throw new BusinessException(30008, "tradeOrderId is required");
+        }
+        String normalizedTradeOrderId = tradeOrderId.trim();
+        String path = QUERY_ORDER_PATH_PREFIX + normalizedTradeOrderId + REFUND_ORDER_PATH_SUFFIX;
+        InternalSignatureSupport.verify(appServerProperties.getClientId(), appServerProperties.getSharedSecret(),
+                "POST", path, rawBody, headers, redisTemplate, Duration.ofMinutes(5));
+        RefundRequest request = parseRefundRequest(rawBody);
+        if (request.refundAmount() == null || request.refundAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(30059, "退款金额不合法");
+        }
+        var response = tx.execute(status -> {
+            Map<String, Object> payment = jdbc.queryForMap(
+                    "SELECT * FROM payment_order WHERE trade_order_id = ? AND is_deleted = 0 FOR UPDATE",
+                    normalizedTradeOrderId);
+            if (((Number) payment.get("status")).intValue() != 2) {
+                throw new BusinessException(30058, "订单未支付，无法退款");
+            }
+            BigDecimal expectedAmount = (BigDecimal) payment.get("amount");
+            if (request.refundAmount().compareTo(expectedAmount) > 0) {
+                throw new BusinessException(30059, "退款金额超过订单金额");
+            }
+            int refundStatus = ((Number) payment.get("refund_status")).intValue();
+            if (refundStatus == 2) {
+                return new XunhuPayClient.RefundOrderResponse(true,
+                        payment.get("refund_transaction_id") == null ? "" : String.valueOf(payment.get("refund_transaction_id")),
+                        "已退款", null, null);
+            }
+            if (refundStatus == 1) {
+                throw new BusinessException(30064, "退款处理中，请勿重复提交");
+            }
+            // 先标记退款中
+            jdbc.update("""
+                UPDATE payment_order SET refund_status = 1, update_time = CURRENT_TIMESTAMP
+                WHERE trade_order_id = ? AND refund_status = 0
+                """, normalizedTradeOrderId);
+            String refundOrderId = normalizedTradeOrderId + "-R";
+            var xunhuResponse = xunhuPayClient.refundOrder(new XunhuPayClient.RefundOrderRequest(
+                    normalizedTradeOrderId, refundOrderId, request.refundAmount(), request.reason()));
+            // 用虎皮椒实际退还金额，若无则用请求金额
+            BigDecimal actualFee = xunhuResponse.refundFee() != null ? xunhuResponse.refundFee() : request.refundAmount();
+            jdbc.update("""
+                UPDATE payment_order
+                SET refund_amount = ?, refund_transaction_id = ?, refund_time = CURRENT_TIMESTAMP,
+                    refund_status = ?, update_time = CURRENT_TIMESTAMP
+                WHERE trade_order_id = ?
+                """, actualFee, xunhuResponse.refundTransactionId(),
+                    xunhuResponse.success() ? 2 : 3, normalizedTradeOrderId);
+            return xunhuResponse;
+        });
+        return Map.of("success", response.success(),
+                "refundId", response.refundTransactionId() == null ? "" : response.refundTransactionId(),
+                "message", response.message());
     }
 
     void handleXunhuNotify(Map<String, String> params) {
@@ -200,6 +257,17 @@ class PaymentService {
         } catch (Exception e) {
             throw new BusinessException(30038, "支付创建报文不合法");
         }
+    }
+
+    private RefundRequest parseRefundRequest(String rawBody) {
+        try {
+            return objectMapper.readValue(rawBody, RefundRequest.class);
+        } catch (Exception e) {
+            throw new BusinessException(30038, "退款请求报文不合法");
+        }
+    }
+
+    record RefundRequest(String tradeOrderId, BigDecimal refundAmount, String reason) {
     }
 
     private void validateCreateRequest(CreatePaymentRequest request) {

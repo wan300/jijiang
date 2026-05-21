@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URI;
 import java.security.SecureRandom;
@@ -82,6 +83,61 @@ class HttpXunhuPayClient implements XunhuPayClient {
             throw e;
         } catch (Exception e) {
             throw new BusinessException(30022, "虎皮椒下单失败");
+        }
+    }
+
+    @Override
+    public RefundOrderResponse refundOrder(RefundOrderRequest request) {
+        if (!properties.configured()) {
+            throw new BusinessException(30020, "虎皮椒支付未配置");
+        }
+        String refundUrl = properties.getGateway().replace("do.html", "refund.html");
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("appid", properties.getAppId());
+        params.put("trade_order_id", request.tradeOrderId());
+        params.put("reason", request.reason());
+        params.put("time", String.valueOf(Instant.now().getEpochSecond()));
+        params.put("nonce_str", nonce(16));
+
+        Map<String, Object> signedParams = XunhuPaySigner.withHash(params, properties.getAppSecret());
+        try {
+            String response = restClient.post()
+                    .uri(refundUrl)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(objectMapper.writeValueAsString(signedParams))
+                    .retrieve()
+                    .body(String.class);
+            log.info("虎皮椒退款响应: {}", response);
+            JsonNode root = objectMapper.readTree(response == null ? "{}" : response);
+
+            // 验签
+            if (root.hasNonNull("hash")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> respMap = objectMapper.convertValue(root, Map.class);
+                if (!XunhuPaySigner.verify(respMap, properties.getAppSecret())) {
+                    log.warn("虎皮椒退款响应验签失败: {}", response);
+                }
+            }
+
+            int errcode = root.path("errcode").asInt(-1);
+            if (errcode != 0) {
+                return new RefundOrderResponse(false, null,
+                        root.path("errmsg").asText("虎皮椒退款失败"), null, response);
+            }
+            String refundTransactionId = root.path("out_refund_no").asText(
+                    root.path("transaction_id").asText(null));
+            String refundStatus = root.path("refund_status").asText("");
+            BigDecimal refundFee = null;
+            try {
+                String feeStr = root.path("refund_fee").asText(null);
+                if (feeStr != null && !feeStr.isBlank()) refundFee = new BigDecimal(feeStr);
+            } catch (NumberFormatException ignored) { /* ignore */ }
+            boolean success = "CD".equals(refundStatus) || root.has("out_refund_no");
+            return new RefundOrderResponse(success, refundTransactionId,
+                    success ? "ok" : "退款处理中: " + refundStatus, refundFee, response);
+        } catch (Exception e) {
+            log.error("虎皮椒退款调用失败", e);
+            return new RefundOrderResponse(false, null, "虎皮椒退款请求异常: " + e.getMessage(), null, null);
         }
     }
 

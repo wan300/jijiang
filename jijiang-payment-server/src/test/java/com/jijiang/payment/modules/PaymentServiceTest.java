@@ -199,6 +199,10 @@ class PaymentServiceTest {
               create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
               update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
               is_deleted TINYINT NOT NULL DEFAULT 0,
+              refund_amount DECIMAL(10,2) DEFAULT NULL,
+              refund_transaction_id VARCHAR(64) DEFAULT NULL,
+              refund_time DATETIME DEFAULT NULL,
+              refund_status TINYINT NOT NULL DEFAULT 0,
               UNIQUE KEY uk_payment_order_no (order_no),
               UNIQUE KEY uk_payment_trade_order_id (trade_order_id)
             )
@@ -213,6 +217,12 @@ class PaymentServiceTest {
             calls++;
             return new CreateOrderResponse(request.tradeOrderId(), "https://cashier.example.com/pay",
                     "https://cashier.example.com/qr", "{}");
+        }
+
+        @Override
+        public RefundOrderResponse refundOrder(RefundOrderRequest request) {
+            return new RefundOrderResponse(true, "RF" + System.currentTimeMillis(), "ok",
+                    request.refundAmount(), "{}");
         }
     }
 }
