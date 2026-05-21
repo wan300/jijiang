@@ -123,7 +123,7 @@ class PaymentService {
                     "message", "已退款");
         }
         BigDecimal expectedAmount = (BigDecimal) payment.get("amount");
-        if (expectedAmount.compareTo(request.refundAmount()) > 0) {
+        if (request.refundAmount().compareTo(expectedAmount) > 0) {
             throw new BusinessException(30059, "退款金额超过订单金额");
         }
         String refundOrderId = normalizedTradeOrderId + "-R";
