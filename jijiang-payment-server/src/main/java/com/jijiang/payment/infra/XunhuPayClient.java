@@ -17,6 +17,7 @@ public interface XunhuPayClient {
     record RefundOrderRequest(String tradeOrderId, String refundOrderId, BigDecimal refundAmount, String reason) {
     }
 
-    record RefundOrderResponse(boolean success, String refundTransactionId, String message, String rawBody) {
+    record RefundOrderResponse(boolean success, String refundTransactionId, String message,
+                               BigDecimal refundFee, String rawBody) {
     }
 }

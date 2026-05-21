@@ -221,7 +221,8 @@ class PaymentServiceTest {
 
         @Override
         public RefundOrderResponse refundOrder(RefundOrderRequest request) {
-            return new RefundOrderResponse(true, "RF" + System.currentTimeMillis(), "ok", "{}");
+            return new RefundOrderResponse(true, "RF" + System.currentTimeMillis(), "ok",
+                    request.refundAmount(), "{}");
         }
     }
 }
